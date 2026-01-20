@@ -1,7 +1,7 @@
 # 에이전트 스킬
 
 AI 코딩 에이전트를 위한 스킬 모음입니다. 스킬은 에이전트의 역량을 확장하는 패키지된 지침과 스크립트입니다.
-이 레포지토리는 Vercel의 react-best-practices를 한국어로 번역한 내용입니다.
+이 레포지토리는 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills/)의 react-best-practices를 한국어로 번역한 내용입니다.
 
 스킬은 [Agent Skills](https://agentskills.io/) 형식을 따릅니다.
 
