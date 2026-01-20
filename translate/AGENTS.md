@@ -78,11 +78,15 @@ AI 에이전트와 LLM을 위해 설계된 React 및 Next.js 애플리케이션�
 
 ---
 
+<a id="1-eliminating-waterfalls"></a>
+
 ## 1. 워터폴 제거
 
 **영향도: CRITICAL**
 
 워터폴은 성능을 가장 크게 저하시키는 원인이다. 연속된 await마다 전체 네트워크 지연이 추가된다. 이를 제거하면 가장 큰 성능 향상을 얻는다.
+
+<a id="11-defer-await-until-needed"></a>
 
 ### 1.1 필요할 때까지 await 지연
 
@@ -160,6 +164,8 @@ async function updateResource(resourceId: string, userId: string) {
 
 이 최적화는 건너뛰는 분기가 자주 발생하거나, 지연한 작업이 비용이 큰 경우 특히 효과적이다.
 
+<a id="12-dependency-based-parallelization"></a>
+
 ### 1.2 의존성 기반 병렬화
 
 **영향도: CRITICAL (2-10배 개선)**
@@ -192,6 +198,8 @@ const { user, config, profile } = await all({
 ```
 
 참고: [https://github.com/shuding/better-all](https://github.com/shuding/better-all)
+
+<a id="13-prevent-waterfall-chains-in-api-routes"></a>
 
 ### 1.3 API 라우트에서 워터폴 체인 방지
 
@@ -227,6 +235,8 @@ export async function GET(request: Request) {
 
 더 복잡한 의존성 체인이 있다면 `better-all`을 사용해 병렬성을 자동으로 극대화한다(의존성 기반 병렬화 참고).
 
+<a id="14-promiseall-for-independent-operations"></a>
+
 ### 1.4 독립적인 작업에 Promise.all()
 
 **영향도: CRITICAL (2-10배 개선)**
@@ -250,6 +260,8 @@ const [user, posts, comments] = await Promise.all([
   fetchComments(),
 ]);
 ```
+
+<a id="15-strategic-suspense-boundaries"></a>
 
 ### 1.5 전략적 Suspense 경계
 
@@ -351,11 +363,15 @@ function DataSummary({ dataPromise }: { dataPromise: Promise<Data> }) {
 
 ---
 
+<a id="2-bundle-size-optimization"></a>
+
 ## 2. 번들 크기 최적화
 
 **영향도: CRITICAL**
 
 초기 번들 크기를 줄이면 TTI(Time to Interactive)와 LCP(Largest Contentful Paint)가 개선된다.
+
+<a id="21-avoid-barrel-file-imports"></a>
 
 ### 2.1 배럴 파일 임포트 피하기
 
@@ -412,6 +428,8 @@ import { Check, X, Menu } from "lucide-react";
 
 참고: [https://vercel.com/blog/how-we-optimized-package-imports-in-next-js](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js)
 
+<a id="22-conditional-module-loading"></a>
+
 ### 2.2 조건부 모듈 로딩
 
 **영향도: HIGH (필요할 때만 큰 데이터 로드)**
@@ -444,6 +462,8 @@ function AnimationPlayer({
 ```
 
 `typeof window !== 'undefined'` 체크는 SSR에서 이 모듈이 번들에 포함되지 않게 해 서버 번들 크기와 빌드 속도를 최적화한다.
+
+<a id="23-defer-non-critical-third-party-libraries"></a>
 
 ### 2.3 중요하지 않은 서드파티 라이브러리 지연 로드
 
@@ -490,6 +510,8 @@ export default function RootLayout({ children }) {
 }
 ```
 
+<a id="24-dynamic-imports-for-heavy-components"></a>
+
 ### 2.4 무거운 컴포넌트는 동적 임포트
 
 **영향도: CRITICAL (TTI와 LCP에 직접 영향)**
@@ -520,6 +542,8 @@ function CodePanel({ code }: { code: string }) {
   return <MonacoEditor value={code} />;
 }
 ```
+
+<a id="25-preload-based-on-user-intent"></a>
 
 ### 2.5 사용자 의도 기반 프리로드
 
@@ -565,11 +589,15 @@ function FlagsProvider({ children, flags }: Props) {
 
 ---
 
+<a id="3-server-side-performance"></a>
+
 ## 3. 서버 측 성능
 
 **영향도: HIGH**
 
 서버 렌더링과 데이터 페칭을 최적화하면 서버 측 워터폴을 제거하고 응답 시간을 줄일 수 있다.
+
+<a id="31-cross-request-lru-caching"></a>
 
 ### 3.1 요청 간 LRU 캐싱
 
@@ -608,6 +636,8 @@ export async function getUser(id: string) {
 
 참고: [https://github.com/isaacs/node-lru-cache](https://github.com/isaacs/node-lru-cache)
 
+<a id="32-minimize-serialization-at-rsc-boundaries"></a>
+
 ### 3.2 RSC 경계의 직렬화 최소화
 
 **영향도: HIGH (데이터 전송 크기 감소)**
@@ -641,6 +671,8 @@ function Profile({ name }: { name: string }) {
   return <div>{name}</div>;
 }
 ```
+
+<a id="33-parallel-data-fetching-with-component-composition"></a>
 
 ### 3.3 컴포넌트 조합으로 데이터 병렬 페칭
 
@@ -721,6 +753,8 @@ export default function Page() {
 }
 ```
 
+<a id="34-per-request-deduplication-with-reactcache"></a>
+
 ### 3.4 React.cache()로 요청 내 중복 제거
 
 **영향도: MEDIUM (요청 내 중복 제거)**
@@ -786,6 +820,8 @@ Next.js에서는 `fetch` API가 요청 메모이제이션으로 확장되어 동
 컴포넌트 트리 전반에서 이런 작업을 중복 제거하려면 `React.cache()`를 사용한다.
 
 참고: [https://react.dev/reference/react/cache](https://react.dev/reference/react/cache)
+
+<a id="35-use-after-for-non-blocking-operations"></a>
 
 ### 3.5 차단하지 않는 작업에 after() 사용
 
@@ -864,11 +900,15 @@ export async function POST(request: Request) {
 
 ---
 
+<a id="4-client-side-data-fetching"></a>
+
 ## 4. 클라이언트 측 데이터 페칭
 
 **영향도: MEDIUM-HIGH**
 
 자동 중복 제거와 효율적인 데이터 페칭 패턴은 중복 네트워크 요청을 줄인다.
+
+<a id="41-deduplicate-global-event-listeners"></a>
 
 ### 4.1 전역 이벤트 리스너 중복 제거
 
@@ -944,6 +984,8 @@ function Profile() {
 }
 ```
 
+<a id="42-use-passive-event-listeners-for-scrolling-performance"></a>
+
 ### 4.2 스크롤 성능을 위해 passive 이벤트 리스너 사용
 
 **영향도: MEDIUM (이벤트 리스너로 인한 스크롤 지연 제거)**
@@ -987,6 +1029,8 @@ useEffect(() => {
 **passive 사용:** 트래킹/분석, 로깅, `preventDefault()`를 호출하지 않는 모든 리스너.
 
 **passive 미사용:** 커스텀 스와이프 제스처, 커스텀 줌 컨트롤처럼 `preventDefault()`가 필요한 리스너.
+
+<a id="43-use-swr-for-automatic-deduplication"></a>
 
 ### 4.3 SWR로 자동 중복 제거
 
@@ -1039,6 +1083,8 @@ function UpdateButton() {
 ```
 
 참고: [https://swr.vercel.app](https://swr.vercel.app)
+
+<a id="44-version-and-minimize-localstorage-data"></a>
 
 ### 4.4 localStorage 데이터 버전 관리 및 최소화
 
@@ -1115,11 +1161,15 @@ function cachePrefs(user: FullUser) {
 
 ---
 
+<a id="5-re-render-optimization"></a>
+
 ## 5. 리렌더 최적화
 
 **영향도: MEDIUM**
 
 불필요한 리렌더를 줄이면 낭비되는 계산을 최소화하고 UI 반응성이 좋아진다.
+
+<a id="51-defer-state-reads-to-usage-point"></a>
 
 ### 5.1 사용 지점에서 상태 읽기 지연
 
@@ -1155,6 +1205,8 @@ function ShareButton({ chatId }: { chatId: string }) {
   return <button onClick={handleShare}>Share</button>;
 }
 ```
+
+<a id="52-extract-to-memoized-components"></a>
 
 ### 5.2 메모이즈 컴포넌트로 추출
 
@@ -1195,6 +1247,8 @@ function Profile({ user, loading }: Props) {
 ```
 
 **참고:** 프로젝트에 [React Compiler](https://react.dev/learn/react-compiler)가 활성화되어 있으면 `memo()`와 `useMemo()`로 수동 메모이즈할 필요가 없다. 컴파일러가 리렌더를 자동 최적화한다.
+
+<a id="53-narrow-effect-dependencies"></a>
 
 ### 5.3 이펙트 의존성 좁히기
 
@@ -1237,6 +1291,8 @@ useEffect(() => {
 }, [isMobile]);
 ```
 
+<a id="54-subscribe-to-derived-state"></a>
+
 ### 5.4 파생 상태에 구독
 
 **영향도: MEDIUM (리렌더 빈도 감소)**
@@ -1261,6 +1317,8 @@ function Sidebar() {
   return <nav className={isMobile ? "mobile" : "desktop"} />;
 }
 ```
+
+<a id="55-use-functional-setstate-updates"></a>
 
 ### 5.5 함수형 setState 업데이트 사용
 
@@ -1343,6 +1401,8 @@ function TodoList() {
 
 **참고:** 프로젝트에 [React Compiler](https://react.dev/learn/react-compiler)가 활성화되어 있으면 일부 케이스를 자동 최적화하지만, 정확성과 stale closure 방지를 위해 함수형 업데이트를 권장한다.
 
+<a id="56-use-lazy-state-initialization"></a>
+
 ### 5.6 지연 상태 초기화 사용
 
 **영향도: MEDIUM (매 렌더마다 낭비되는 계산)**
@@ -1397,6 +1457,8 @@ localStorage/sessionStorage에서 초기값을 읽거나, 데이터 구조(인�
 
 단순 원시값(`useState(0)`), 직접 참조(`useState(props.value)`), 값싼 리터럴(`useState({})`)에는 함수형이 필요 없다.
 
+<a id="57-use-transitions-for-non-urgent-updates"></a>
+
 ### 5.7 긴급하지 않은 업데이트에 Transition 사용
 
 **영향도: MEDIUM (UI 반응성 유지)**
@@ -1435,11 +1497,15 @@ function ScrollTracker() {
 
 ---
 
+<a id="6-rendering-performance"></a>
+
 ## 6. 렌더링 성능
 
 **영향도: MEDIUM**
 
 렌더링 과정을 최적화하면 브라우저가 수행해야 하는 작업이 줄어든다.
+
+<a id="61-animate-svg-wrapper-instead-of-svg-element"></a>
 
 ### 6.1 SVG 요소 대신 SVG 래퍼를 애니메이션
 
@@ -1475,6 +1541,8 @@ function LoadingSpinner() {
 
 모든 CSS transform/transition(`transform`, `opacity`, `translate`, `scale`, `rotate`)에 적용된다. 래퍼 div가 GPU 가속을 사용해 더 부드러운 애니메이션을 만든다.
 
+<a id="62-css-content-visibility-for-long-lists"></a>
+
 ### 6.2 긴 목록에 CSS content-visibility
 
 **영향도: HIGH (더 빠른 초기 렌더)**
@@ -1509,6 +1577,8 @@ function MessageList({ messages }: { messages: Message[] }) {
 
 메시지 1000개라면 브라우저가 화면 밖 약 990개 항목의 레이아웃/페인트를 건너뛰어 초기 렌더가 10배 빨라진다.
 
+<a id="63-hoist-static-jsx-elements"></a>
+
 ### 6.3 정적 JSX 요소 끌어올리기
 
 **영향도: LOW (재생성 방지)**
@@ -1541,6 +1611,8 @@ function Container() {
 
 **참고:** 프로젝트에 [React Compiler](https://react.dev/learn/react-compiler)가 활성화되어 있으면 컴파일러가 정적 JSX를 자동으로 끌어올리고 리렌더를 최적화하므로 수동 끌어올리기가 필요 없다.
 
+<a id="64-optimize-svg-precision"></a>
+
 ### 6.4 SVG 정밀도 최적화
 
 **영향도: LOW (파일 크기 감소)**
@@ -1564,6 +1636,8 @@ SVG 좌표 정밀도를 낮춰 파일 크기를 줄인다. 최적 정밀도는 v
 ```bash
 npx svgo --precision=1 --multipass icon.svg
 ```
+
+<a id="65-prevent-hydration-mismatch-without-flickering"></a>
 
 ### 6.5 깜빡임 없이 하이드레이션 불일치 방지
 
@@ -1633,6 +1707,8 @@ function ThemeWrapper({ children }: { children: ReactNode }) {
 
 이 패턴은 테마 토글, 사용자 선호 설정, 인증 상태처럼 클라이언트 전용 데이터가 기본값 깜빡임 없이 즉시 렌더링되어야 하는 경우에 특히 유용하다.
 
+<a id="66-use-activity-component-for-showhide"></a>
+
 ### 6.6 표시/숨김에 Activity 컴포넌트 사용
 
 **영향도: MEDIUM (상태/DOM 보존)**
@@ -1687,11 +1763,15 @@ function Badge({ count }: { count: number }) {
 
 ---
 
+<a id="7-javascript-performance"></a>
+
 ## 7. 자바스크립트 성능
 
 **영향도: LOW-MEDIUM**
 
 핫 경로에서의 마이크로 최적화는 의미 있는 개선으로 이어질 수 있다.
+
+<a id="71-batch-dom-css-changes"></a>
 
 ### 7.1 DOM CSS 변경 배치
 
@@ -1767,6 +1847,8 @@ function Box({ isHighlighted }: { isHighlighted: boolean }) {
 
 가능하면 인라인 스타일보다 CSS 클래스를 선호한다. 클래스는 브라우저에서 캐시되며 관심사 분리를 개선한다.
 
+<a id="72-build-index-maps-for-repeated-lookups"></a>
+
 ### 7.2 반복 조회용 인덱스 맵 만들기
 
 **영향도: LOW-MEDIUM (1M ops → 2K ops)**
@@ -1801,6 +1883,8 @@ function processOrders(orders: Order[], users: User[]) {
 
 1000개 주문 × 1000명 사용자: 1M ops → 2K ops.
 
+<a id="73-cache-property-access-in-loops"></a>
+
 ### 7.3 루프에서 프로퍼티 접근 캐시
 
 **영향도: LOW-MEDIUM (조회 감소)**
@@ -1824,6 +1908,8 @@ for (let i = 0; i < len; i++) {
   process(value);
 }
 ```
+
+<a id="74-cache-repeated-function-calls"></a>
 
 ### 7.4 반복 함수 호출 캐시
 
@@ -1901,6 +1987,8 @@ function onAuthChange() {
 
 참고: [https://vercel.com/blog/how-we-made-the-vercel-dashboard-twice-as-fast](https://vercel.com/blog/how-we-made-the-vercel-dashboard-twice-as-fast)
 
+<a id="75-cache-storage-api-calls"></a>
+
 ### 7.5 Storage API 호출 캐시
 
 **영향도: LOW-MEDIUM (비싼 I/O 감소)**
@@ -1967,6 +2055,8 @@ document.addEventListener("visibilitychange", () => {
 
 스토리지가 외부에서 변경될 수 있다면(다른 탭, 서버가 설정한 쿠키), 캐시를 무효화한다.
 
+<a id="76-combine-multiple-array-iterations"></a>
+
 ### 7.6 배열 반복을 하나로 합치기
 
 **영향도: LOW-MEDIUM (반복 횟수 감소)**
@@ -1994,6 +2084,8 @@ for (const user of users) {
   if (!user.isActive) inactive.push(user);
 }
 ```
+
+<a id="77-early-length-check-for-array-comparisons"></a>
 
 ### 7.7 배열 비교 전에 길이 먼저 확인
 
@@ -2044,6 +2136,8 @@ function hasChanges(current: string[], original: string[]) {
 
 - 차이를 찾는 즉시 조기 반환한다
 
+<a id="78-early-return-from-functions"></a>
+
 ### 7.8 함수에서 조기 반환
 
 **영향도: LOW-MEDIUM (불필요한 계산 방지)**
@@ -2090,6 +2184,8 @@ function validateUsers(users: User[]) {
 }
 ```
 
+<a id="79-hoist-regexp-creation"></a>
+
 ### 7.9 RegExp 생성 끌어올리기
 
 **영향도: LOW-MEDIUM (재생성 방지)**
@@ -2130,6 +2226,8 @@ regex.test("foo"); // false, lastIndex = 0
 ```
 
 전역 정규식(`/g`)은 `lastIndex` 상태가 변한다:
+
+<a id="710-use-loop-for-minmax-instead-of-sort"></a>
 
 ### 7.10 정렬 대신 루프로 최소/최대 찾기
 
@@ -2209,6 +2307,8 @@ const max = Math.max(...numbers);
 
 작은 배열에서는 동작하지만, 스프레드 연산자 한계로 매우 큰 배열에서는 느리거나 에러가 날 수 있다. 안정성을 위해 루프 방식을 사용한다.
 
+<a id="711-use-setmap-for-o1-lookups"></a>
+
 ### 7.11 O(1) 조회에 Set/Map 사용
 
 **영향도: LOW-MEDIUM (O(n)에서 O(1))**
@@ -2228,6 +2328,8 @@ items.filter(item => allowedIds.includes(item.id))
 const allowedIds = new Set(['a', 'b', 'c', ...])
 items.filter(item => allowedIds.has(item.id))
 ```
+
+<a id="712-use-tosorted-instead-of-sort-for-immutability"></a>
 
 ### 7.12 불변성을 위해 sort() 대신 toSorted()
 
@@ -2288,11 +2390,15 @@ const sorted = [...items].sort((a, b) => a.value - b.value);
 
 ---
 
+<a id="8-advanced-patterns"></a>
+
 ## 8. 고급 패턴
 
 **영향도: LOW**
 
 신중한 구현이 필요한 특정 경우를 위한 고급 패턴이다.
+
+<a id="81-store-event-handlers-in-refs"></a>
 
 ### 8.1 이벤트 핸들러를 ref에 저장
 
@@ -2329,6 +2435,8 @@ function useWindowEvent(event: string, handler: () => void) {
 **대안: 최신 React라면 `useEffectEvent` 사용:**
 
 `useEffectEvent`는 같은 패턴을 더 깔끔하게 제공한다. 항상 최신 핸들러를 호출하는 안정적인 함수 참조를 만든다.
+
+<a id="82-uselatest-for-stable-callback-refs"></a>
 
 ### 8.2 안정적인 콜백 ref를 위한 useLatest
 
@@ -2376,6 +2484,8 @@ function SearchInput({ onSearch }: { onSearch: (q: string) => void }) {
 ```
 
 ---
+
+<a id="references"></a>
 
 ## 참고
 
